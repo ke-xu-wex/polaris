@@ -33,6 +33,18 @@ This example requires `jq` to be installed on your machine.
        -Dquarkus.container-image.tag=postgres-latest \
        -Dquarkus.container-image.build=true
     ```
+1.1  Build Spark Docker image. This is only required if you do not have the image already built. If you have the image already built, skip this step.
+```shell
+docker images | grep wex-dehub
+
+cd getting-started/jdbc
+
+docker buildx build --platform linux/amd64,linux/arm64 \
+  -t wex-dehub \
+  --build-arg ARTIFACTORY_USERNAME="$(grep '<username>' ~/.m2/settings.xml | sed -n 's/.*<username>\(.*\)<\/username>.*/\1/p')" \
+  --build-arg ARTIFACTORY_TOKEN="$(grep '<password>' ~/.m2/settings.xml | sed -n 's/.*<password>\(.*\)<\/password>.*/\1/p')" \
+  -f Dockerfile.spark --output type=docker .
+```
 
 2. Start the docker compose group by running the following command from the root of the repository:
 

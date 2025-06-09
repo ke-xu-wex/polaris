@@ -20,16 +20,29 @@
 services:
   polaris-bootstrap:
     image: apache/polaris-admin-tool:postgres-latest
+    container_name: polaris-admin
+    stdin_open: true
+    tty: true
     environment:
       - POLARIS_PERSISTENCE_TYPE=relational-jdbc
       - QUARKUS_DATASOURCE_DB_KIND=pgsql
       - QUARKUS_DATASOURCE_JDBC_URL=${QUARKUS_DATASOURCE_JDBC_URL}
       - QUARKUS_DATASOURCE_USERNAME=${QUARKUS_DATASOURCE_USERNAME}
       - QUARKUS_DATASOURCE_PASSWORD=${QUARKUS_DATASOURCE_PASSWORD}
-    command:
-      - "bootstrap"
-      - "--realm=POLARIS"
-      - "--credential=POLARIS,root,s3cr3t"
+    entrypoint: ["/bin/bash"]
+    command: >
+      -c '
+      java -jar /deployments/polaris-admin-tool.jar bootstrap --realm=POLARIS --credential=POLARIS,root,s3cr3t 2>&1 | tee /tmp/bootstrap.log;
+      if grep -q "It appears this metastore manager has already been bootstrapped" /tmp/bootstrap.log; then
+        echo "Metastore already bootstrapped. Marking as success."
+        exit 0
+      elif [ -s /tmp/bootstrap.log ]; then
+        echo "Bootstrap completed."
+        exit 0
+      else
+        echo "Bootstrap failed."
+        exit 1
+      fi'
 
   polaris:
     depends_on:
