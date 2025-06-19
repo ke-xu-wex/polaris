@@ -21,6 +21,7 @@ services:
 
   polaris:
     image: apache/polaris:postgres-latest
+    container_name: polaris
     ports:
       # API port
       - "8181:8181"
@@ -45,6 +46,12 @@ services:
       polaris.features."ALLOW_INSECURE_STORAGE_TYPES": "true"
       polaris.features."SUPPORTED_CATALOG_STORAGE_TYPES": "[\"FILE\",\"S3\",\"GCS\",\"AZURE\"]"
       polaris.readiness.ignore-severe-issues: "true"
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: $AWS_ACCESS_KEY_ID
+      AWS_SECRET_ACCESS_KEY: $AWS_SECRET_ACCESS_KEY
+    volumes:
+      # aws credentials for accessing aws resources
+      - ~/.aws:/home/polaris/.aws:ro
     healthcheck:
       test: ["CMD", "curl", "http://localhost:8182/q/health"]
       interval: 2s
@@ -63,17 +70,30 @@ services:
       - AZURE_TENANT_ID=${AZURE_TENANT_ID}
       - CLIENT_ID=${CLIENT_ID}
       - CLIENT_SECRET=${CLIENT_SECRET}
+      - AWS_REGION=us-west-2
+      - AWS_ACCESS_KEY_ID=$AWS_ACCESS_KEY_ID
+      - AWS_SECRET_ACCESS_KEY=$AWS_SECRET_ACCESS_KEY
+      - AWS_SESSION_TOKEN=${AWS_SESSION_TOKEN}
     volumes:
       - ${ASSETS_PATH}/polaris/:/polaris
     entrypoint: '/bin/sh -c "chmod +x /polaris/create-catalog.sh && /polaris/create-catalog.sh"'
 
   spark-sql:
-    image: apache/spark:3.5.5-java17-python3
+    image: wex-dehub:latest
+    container_name: spark-sql
+    environment:
+      AWS_REGION: us-west-2
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY}
+      AWS_SESSION_TOKEN: ${AWS_SESSION_TOKEN}
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
     stdin_open: true
     tty: true
+    volumes:
+      # aws credentials for accessing aws resources
+      - ~/.aws:/home/spark/.aws:ro
     ports:
       - "4040-4045:4040-4045"
     healthcheck:
@@ -97,6 +117,7 @@ services:
 
   trino:
     image: trinodb/trino:latest
+    container_name: trino
     depends_on:
       polaris-setup:
         condition: service_completed_successfully
